@@ -12,7 +12,7 @@ import sys
 
 # Import modules
 from config import UI_SEPARATOR, UI_ICONS, TMDB_IMAGE_BASE_URL
-from api import tmdb, omdb, youtube
+from api import tmdb, omdb, youtube, wikipedia
 from utils.translator import translate_to_vietnamese, translate_texts
 from utils.formatter import format_date, format_rating_source, format_runtime
 
@@ -39,11 +39,8 @@ def display_movie_info(movie):
     # Generate YouTube search URL
     youtube_search_url = youtube.get_youtube_search_url(movie_data["title"], movie_data["release_year"])
     
-    # Get transcript from first YouTube result if available
-    youtube_transcript_result = None
-    if youtube_reviews and len(youtube_reviews) > 0:
-        first_video = youtube_reviews[0]
-        youtube_transcript_result = youtube.get_youtube_transcript(first_video['video_id'])
+    # Get Wikipedia plot
+    wiki_plot_data = wikipedia.get_movie_plot(movie_data["title"], movie_data["release_year"])
     
     # Get user reviews from TMDb
     reviews = tmdb.get_movie_reviews(movie["id"], limit=2)
@@ -54,6 +51,14 @@ def display_movie_info(movie):
     overview_vi = translate_to_vietnamese(movie_data["overview"])
     genres_vi = translate_texts(movie_data["genres"])
     production_companies_vi = translate_texts(movie_data["production_companies"])
+    
+    # Translate Wikipedia plot if it's in English
+    wiki_plot_vi = ""
+    if wiki_plot_data['success']:
+        if wiki_plot_data['language'] == 'en':
+            wiki_plot_vi = translate_to_vietnamese(wiki_plot_data['plot'])
+        else:
+            wiki_plot_vi = wiki_plot_data['plot']
     
     # Format date and runtime
     formatted_release_date = format_date(movie_data["release_date"])
@@ -110,13 +115,14 @@ def display_movie_info(movie):
             print(f"\n   Đánh giá #{i} - {author}:")
             print(f"   \"{content_vi}\"")
     
-    # Display movie summary
-    print(f"\n{UI_ICONS['summary']} TÓM TẮT NỘI DUNG PHIM:\n{overview_vi}")
+    # Display movie summary from TMDb
+    print(f"\n{UI_ICONS['summary']} TÓM TẮT NỘI DUNG PHIM (TMDB):\n{overview_vi}")
     
-    # Display YouTube transcript summary if available (after movie summary)
-    if youtube_transcript_result and youtube_transcript_result['success']:
-        print(f"\n{UI_ICONS['transcript']} TÓM TẮT NỘI DUNG VIDEO YOUTUBE:")
-        print(f"   {youtube_transcript_result['summary']}")
+    # Display Wikipedia plot if available
+    if wiki_plot_data['success']:
+        print(f"\n{UI_ICONS['summary']} TÓM TẮT CỐT TRUYỆN (WIKIPEDIA):")
+        print(f"{wiki_plot_vi}")
+        print(f"\nNguồn: {wiki_plot_data['source_url']}")
     
     # Display YouTube reviews
     print(f"\n{UI_ICONS['youtube']} VIDEOS TRÊN YOUTUBE:")
