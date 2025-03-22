@@ -15,6 +15,11 @@ from config import UI_SEPARATOR, UI_ICONS, TMDB_IMAGE_BASE_URL
 from api import tmdb, omdb, youtube, wikipedia
 from utils.translator import translate_to_vietnamese, translate_texts
 from utils.formatter import format_date, format_rating_source, format_runtime
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
+console = Console()
 
 def display_movie_info(movie):
     """Display formatted movie information in Vietnamese."""
@@ -75,99 +80,64 @@ def display_movie_info(movie):
     formatted_release_date = format_date(movie_data["release_date"])
     hours, minutes = format_runtime(movie_data["runtime"])
     
-    # Format and display information
-    print("\n" + UI_SEPARATOR)
-    print(f"{UI_ICONS['movie']} {title_vi}{original_title_vi}")
-    print(UI_SEPARATOR)
-    
-    print(f"\n{UI_ICONS['date']} Ngày phát hành: {formatted_release_date}")
-    if movie_data["runtime"]:
-        print(f"{UI_ICONS['duration']} Thời lượng: {hours}h {minutes}m")
-    
-    print(f"\n{UI_ICONS['genre']} Thể loại: {', '.join(genres_vi)}")
-    
-    if movie_data["directors"]:
-        print(f"\n{UI_ICONS['director']} Đạo diễn: {', '.join(movie_data['directors'])}")
-    
-    if movie_data["cast"]:
-        print(f"\n{UI_ICONS['cast']} Diễn viên chính: {', '.join(movie_data['cast'])}")
-    
-    if production_companies_vi:
-        print(f"\n{UI_ICONS['company']} Hãng sản xuất: {', '.join(production_companies_vi)}")
-    
-    # Display ratings
-    print(f"\n{UI_ICONS['rating']} ĐÁNH GIÁ:")
-    print(f"   • The Movie Database: {movie_data['vote_average']}/10 (dựa trên {movie_data['vote_count']} lượt đánh giá)")
-    
-    if omdb_details['success'] and omdb_details['imdb_id']:
-        imdb_url = f"https://www.imdb.com/title/{omdb_details['imdb_id']}"
-        print(f"   • Internet Movie Database URL: {imdb_url}")
-        
+    # Format and display information using Rich
+    movie_title = f"{UI_ICONS['movie']} {title_vi}{original_title_vi}"
+    basic_info = f"""
+{UI_ICONS['date']} Ngày phát hành: {formatted_release_date}
+{UI_ICONS['duration']} Thời lượng: {hours}h {minutes}m
+{UI_ICONS['genre']} Thể loại: {', '.join(genres_vi)}
+{UI_ICONS['director']} Đạo diễn: {', '.join(movie_data['directors'])}
+{UI_ICONS['cast']} Diễn viên chính: {', '.join(movie_data['cast'])}
+{UI_ICONS['company']} Hãng sản xuất: {', '.join(production_companies_vi)}
+"""
+    console.print(Panel(basic_info, title=movie_title, border_style="blue"))
+
+    # Display ratings using a table
     if omdb_details['success'] and omdb_details['ratings']:
+        table = Table(title="ĐÁNH GIÁ")
+        table.add_column("Nguồn", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Điểm", style="magenta")
+        table.add_row("The Movie Database", f"{movie_data['vote_average']}/10 (dựa trên {movie_data['vote_count']} lượt đánh giá)")
         for rating in omdb_details['ratings']:
             source = format_rating_source(rating.get("Source", ""))
             value = rating.get("Value", "N/A")
-            print(f"   • {source}: {value}")
-    
+            table.add_row(source, value)
+        console.print(table)
+
     # Display awards if available
     if omdb_details['success'] and omdb_details['awards']:
-        print(f"\n{UI_ICONS['award']} GIẢI THƯỞNG:")
         awards_vi = translate_to_vietnamese(omdb_details['awards'])
-        print(f"   {awards_vi}")
-    
-    # Display reviews if available
-    if reviews:
-        print(f"\n{UI_ICONS['review']} ĐÁNH GIÁ TỪ NGƯỜI XEM ({len(reviews)}):")
-        for i, review in enumerate(reviews, 1):
-            author = review.get("author", "Ẩn danh")
-            content = review.get("content", "")
-            
-            # Truncate review content if it's too long
-            if len(content) > 200:
-                content = content[:197] + "..."
-                
-            # Translate review content
-            content_vi = translate_to_vietnamese(content)
-            
-            print(f"\n   Đánh giá #{i} - {author}:")
-            print(f"   \"{content_vi}\"")
-    
-    # Display movie summary from TMDb
-    print(f"\n{UI_ICONS['summary']} TÓM TẮT NỘI DUNG PHIM (The Movie Database):\n{overview_vi}")
-    
-    # Display IMDb plot if available
+        console.print(Panel(awards_vi, title="GIẢI THƯỞNG", border_style="yellow"))
+
+    # Display summary
+    console.print(Panel(overview_vi, title="TÓM TẮT NỘI DUNG PHIM (The Movie Database)", border_style="green"))
     if omdb_details['success'] and imdb_plot_vi:
-        print(f"\n{UI_ICONS['summary']} TÓM TẮT NỘI DUNG PHIM (Internet Movie Database):\n{imdb_plot_vi}")
-        if omdb_details.get('url'):
-            print(f"\nNguồn: {omdb_details['url']}")
-    
-    # Display Wikipedia plot if available
+        console.print(Panel(imdb_plot_vi, title="TÓM TẮT NỘI DUNG PHIM (Internet Movie Database)", border_style="green"))
     if wiki_plot_data['success']:
-        print(f"\n{UI_ICONS['summary']} TÓM TẮT CỐT TRUYỆN (WIKIPEDIA):")
-        print(f"{wiki_plot_vi}")
-        print(f"\nNguồn: {wiki_plot_data['source_url']}")
-    
-    # Display YouTube reviews
-    print(f"\n{UI_ICONS['youtube']} VIDEOS TRÊN YOUTUBE:")
-    print(f"   Từ khóa tìm kiếm mặc định: '{movie_data['title']} review đánh giá phim'")
-        
+        console.print(Panel(wiki_plot_vi, title="TÓM TẮT CỐT TRUYỆN (WIKIPEDIA)", border_style="green"))
+
+    # Display YouTube reviews using Rich Table
+    console.print(f"\n{UI_ICONS['youtube']} VIDEOS TRÊN YOUTUBE:")
     if youtube_reviews:
-        print(f"\n   Tìm thấy {len(youtube_reviews)} video trên YouTube:")
+        table = Table(title="VIDEO REVIEW")
+        table.add_column("#", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Tiêu đề", style="magenta")
+        table.add_column("Kênh", style="green")
+        table.add_column("Ngày xuất bản", style="yellow")
         for i, review in enumerate(youtube_reviews, 1):
-            published_date = f" ({review['published_at']})" if review['published_at'] else ""
-            print(f"   {i}. {review['title']} - {review['channel']}{published_date}")
-            print(f"      {review['url']}")
-        
-        print(f"\n   Xem thêm: {youtube_search_url}")
+            published_date = review['published_at'] if review['published_at'] else "N/A"
+            table.add_row(str(i), review['title'], review['channel'], published_date)
+        console.print(table)
+        console.print(f"\nXem thêm: {youtube_search_url}")
     else:
-        print(f"   Tìm kiếm trên YouTube: {youtube_search_url}")
-    
+        console.print(f"Tìm kiếm trên YouTube: {youtube_search_url}")
+
     # Display poster URL if available
     if movie_data["poster_path"]:
         poster_url = f"{TMDB_IMAGE_BASE_URL}{movie_data['poster_path']}"
-        print(f"\n{UI_ICONS['poster']}  Poster: {poster_url}")
-    
-    print("\n" + UI_SEPARATOR)
+        console.print(f"\n{UI_ICONS['poster']} Poster: {poster_url}")
+
+    console.print("\n" + UI_SEPARATOR)
 
 def main():
     """Main function to run the movie search script."""
@@ -197,15 +167,18 @@ def main():
         # Search for movies
         movies = tmdb.search_movie(query)
         
-        if not movies:
-            print("Không tìm thấy phim nào. Vui lòng thử lại với từ khóa khác.")
-            continue
-        
-        # Display search results
-        print(f"\nTìm thấy {len(movies)} kết quả:")
-        for i, movie in enumerate(movies[:10], 1):  # Show max 10 results
-            release_year = movie.get("release_date", "")[:4] if movie.get("release_date") else "N/A"
-            print(f"{i}. {movie.get('title')} ({release_year})")
+        # Display search results using Rich Table
+        if movies:
+            table = Table(title="KẾT QUẢ TÌM KIẾM")
+            table.add_column("#", justify="right", style="cyan", no_wrap=True)
+            table.add_column("Tên phim", style="magenta")
+            table.add_column("Năm phát hành", style="green")
+            for i, movie in enumerate(movies[:10], 1):  # Show max 10 results
+                release_year = movie.get("release_date", "")[:4] if movie.get("release_date") else "N/A"
+                table.add_row(str(i), movie.get('title', 'N/A'), release_year)
+            console.print(table)
+        else:
+            console.print("Không tìm thấy phim nào. Vui lòng thử lại với từ khóa khác.")
         
         # Let user select a movie
         while True:

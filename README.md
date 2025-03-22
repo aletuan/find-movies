@@ -119,13 +119,7 @@ Script được thiết kế theo kiến trúc module, dễ dàng mở rộng:
 - Cần đăng ký một dự án trên Google Cloud Console
 - API key miễn phí cung cấp 10,000 đơn vị mỗi ngày (khoảng 100-150 yêu cầu)
 
-## Lưu ý bảo mật
-
-- Không bao giờ commit file `.env` chứa API keys vào version control
-- File `.gitignore` đã được cấu hình để loại trừ các file `.env`
-- Đối với phát triển nhóm, chia sẻ mẫu `.env.example` không chứa API keys thực tế
-
-## Lưu ý chung
+## Chú ý
 
 - Script này sử dụng TMDB API để lấy thông tin phim, OMDb API để lấy thông tin đánh giá, YouTube API để tìm video liên quan, YouTube Transcript API để lấy phụ đề, và dịch vụ Google Translate để dịch sang tiếng Việt.
 - Tốc độ và chất lượng dịch có thể phụ thuộc vào kết nối mạng và hạn chế của API.

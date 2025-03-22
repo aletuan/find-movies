@@ -9,6 +9,7 @@ This script uses ChatGPT API to search and display detailed movie information in
 
 import json
 import sys
+from rich.panel import Panel
 from config import console, UI_ICONS, UI_SEPARATOR, create_movie_panel, create_rating_table
 from movie_ai import MovieAI
 

@@ -14,27 +14,36 @@ class MovieAI:
         """Search for movies using ChatGPT."""
         prompt = f"""
         Tìm kiếm thông tin về phim: {query}
-        Hãy cung cấp thông tin chi tiết về phim này bao gồm:
-        1. Tên phim (tiếng Việt và tiếng Anh)
-        2. Năm phát hành
-        3. Thời lượng
-        4. Thể loại
-        5. Đạo diễn
-        6. Diễn viên chính
-        7. Hãng sản xuất
-        8. Đánh giá từ các nguồn (IMDb, TMDB)
-        9. Giải thưởng (nếu có)
-        10. Tóm tắt nội dung
-        11. Link poster phim (nếu có)
+        Hãy cung cấp thông tin chi tiết về phim này dưới dạng JSON với các trường sau:
+        {{
+            "title_vi": "Tên phim bằng tiếng Việt",
+            "title_en": "Tên phim bằng tiếng Anh",
+            "release_year": "Năm phát hành",
+            "duration": "Thời lượng (ví dụ: 2h 30m)",
+            "genres": ["Thể loại 1", "Thể loại 2"],
+            "director": "Tên đạo diễn",
+            "cast": ["Diễn viên 1", "Diễn viên 2"],
+            "production_company": "Tên hãng sản xuất",
+            "ratings": {{
+                "IMDb": "X.X/10",
+                "TMDB": "X.X/10"
+            }},
+            "awards": "Các giải thưởng (nếu có)",
+            "summary": "Tóm tắt nội dung phim",
+            "poster_url": "Link poster phim (nếu có)"
+        }}
         
-        Hãy trả về thông tin dưới dạng JSON với các trường tương ứng.
+        Lưu ý:
+        - Đảm bảo tất cả các trường đều có giá trị
+        - Nếu không có thông tin cho một trường, sử dụng giá trị mặc định phù hợp
+        - Đảm bảo JSON được định dạng đúng
         """
         
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "Bạn là một chuyên gia về phim ảnh, có khả năng tìm kiếm và tổng hợp thông tin phim một cách chính xác."},
+                    {"role": "system", "content": "Bạn là một chuyên gia về phim ảnh, có khả năng tìm kiếm và tổng hợp thông tin phim một cách chính xác. Hãy luôn trả về dữ liệu dưới dạng JSON với đầy đủ các trường được yêu cầu."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.7,
