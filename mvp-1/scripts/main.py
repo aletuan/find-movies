@@ -167,18 +167,35 @@ def display_movie_info(movie):
                     
                     if transcript_result['success']:
                         # Create a panel for the transcript
+                        # Combine all text segments into a single paragraph
                         transcript_text = ""
+                        current_sentence = ""
+                        
                         for segment in transcript_result['transcript']:
-                            # Format timestamp as minutes:seconds
-                            timestamp = int(segment['start'])
-                            minutes = timestamp // 60
-                            seconds = timestamp % 60
-                            time_str = f"{minutes:02d}:{seconds:02d}"
+                            text = segment['text'].strip()
                             
-                            transcript_text += f"[{time_str}] {segment['text']}\n"
+                            # Skip empty segments
+                            if not text:
+                                continue
+                                
+                            # Add space before the text if it doesn't start with punctuation
+                            if text[0] not in ',.!?:;' and current_sentence:
+                                current_sentence += ' '
+                            
+                            current_sentence += text
+                            
+                            # If the segment ends with sentence-ending punctuation,
+                            # add it to transcript_text and start a new sentence
+                            if text[-1] in '.!?':
+                                transcript_text += current_sentence + '\n\n'
+                                current_sentence = ""
+                        
+                        # Add any remaining text
+                        if current_sentence:
+                            transcript_text += current_sentence
                         
                         console.print(Panel(
-                            transcript_text,
+                            transcript_text.strip(),
                             title=f"PHỤ ĐỀ - {video['title']}",
                             border_style="blue"
                         ))
