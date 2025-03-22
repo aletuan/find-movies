@@ -17,6 +17,71 @@ from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFoun
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import YOUTUBE_API_KEY, YOUTUBE_API_URL, DEFAULT_SEARCH_SUFFIX, YOUTUBE_RESULT_LIMIT
 
+def is_vietnamese_channel(channel_title):
+    """Check if a YouTube channel is likely Vietnamese based on its title.
+    
+    Args:
+        channel_title (str): The title of the YouTube channel
+        
+    Returns:
+        bool: True if the channel appears to be Vietnamese
+    """
+    # List of common Vietnamese words/patterns in channel names
+    vn_patterns = [
+        'review', 'phim', 'điện ảnh', 'phê phim', 'xem phim',
+        'việt', 'viet', 'vn', '.vn', 'vietnam',
+        'phim hay', 'phim mới', 'phim chiếu rạp',
+        'cine', 'cinema', 'rap', 'rạp'
+    ]
+    
+    # Convert to lowercase for case-insensitive matching
+    channel_lower = channel_title.lower()
+    
+    # Check for Vietnamese diacritical marks
+    vietnamese_chars = 'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ'
+    has_vietnamese_chars = any(c in vietnamese_chars for c in channel_lower)
+    
+    # Check for Vietnamese patterns
+    has_vn_pattern = any(pattern.lower() in channel_lower for pattern in vn_patterns)
+    
+    return has_vietnamese_chars or has_vn_pattern
+
+def contains_movie_title(video_title, movie_title):
+    """Check if a video title contains the movie title.
+    
+    Args:
+        video_title (str): The title of the YouTube video
+        movie_title (str): The title of the movie being searched
+        
+    Returns:
+        bool: True if the video title contains the movie title
+    """
+    # Convert both to lowercase for case-insensitive matching
+    video_lower = video_title.lower()
+    movie_lower = movie_title.lower()
+    
+    # Remove common special characters from movie title
+    movie_clean = ''.join(c for c in movie_lower if c.isalnum() or c.isspace())
+    
+    # Split movie title into words
+    movie_words = movie_clean.split()
+    
+    # For single word titles, check if it exists as a whole word
+    if len(movie_words) == 1:
+        import re
+        pattern = r'\b' + re.escape(movie_clean) + r'\b'
+        return bool(re.search(pattern, video_lower))
+    
+    # For multi-word titles, check if all words are present in order
+    current_pos = 0
+    for word in movie_words:
+        pos = video_lower.find(word, current_pos)
+        if pos == -1:
+            return False
+        current_pos = pos + len(word)
+    
+    return True
+
 def get_youtube_reviews(movie_title, year=None, limit=None, custom_keywords=None):
     """Search for movie reviews on YouTube using the YouTube API.
     
@@ -41,13 +106,13 @@ def get_youtube_reviews(movie_title, year=None, limit=None, custom_keywords=None
     query = f"{movie_title} {year} review phim" if year else f"{movie_title} review phim"
     query += f" {custom_keywords}" if custom_keywords else f" {DEFAULT_SEARCH_SUFFIX}"
     
-    # Set up API request
+    # Set up API request with a higher maxResults to account for filtering
     params = {
         "key": YOUTUBE_API_KEY,
         "q": query,
         "part": "snippet",
         "type": "video",
-        "maxResults": limit,
+        "maxResults": min(50, limit * 3),  # Request more results to filter
         "relevanceLanguage": "vi"
     }
     
@@ -57,7 +122,7 @@ def get_youtube_reviews(movie_title, year=None, limit=None, custom_keywords=None
         response.raise_for_status()
         data = response.json()
         
-        # Process results
+        # Process and filter results
         results = []
         for item in data.get("items", []):
             video_id = item.get("id", {}).get("videoId", "")
@@ -67,7 +132,11 @@ def get_youtube_reviews(movie_title, year=None, limit=None, custom_keywords=None
             published_at = snippet.get("publishedAt", "")
             thumbnail = snippet.get("thumbnails", {}).get("medium", {}).get("url", "")
             
-            if video_id and title:
+            # Only include videos from Vietnamese channels that contain the movie title
+            if (video_id and title and 
+                is_vietnamese_channel(channel) and 
+                contains_movie_title(title, movie_title)):
+                
                 results.append({
                     "title": title,
                     "channel": channel,
@@ -76,6 +145,10 @@ def get_youtube_reviews(movie_title, year=None, limit=None, custom_keywords=None
                     "thumbnail": thumbnail,
                     "video_id": video_id
                 })
+                
+                # Break if we have enough Vietnamese results
+                if len(results) >= limit:
+                    break
                 
         return results
     except requests.exceptions.RequestException as e:
