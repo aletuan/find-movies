@@ -36,7 +36,7 @@ def get_youtube_reviews(movie_title, year=None, limit=None, custom_keywords=None
         return []
     
     # Prepare search query
-    query = f"{movie_title} {year}" if year else movie_title
+    query = f"{movie_title} {year} review phim" if year else f"{movie_title} review phim"
     query += f" {custom_keywords}" if custom_keywords else f" {DEFAULT_SEARCH_SUFFIX}"
     
     # Set up API request
