@@ -15,6 +15,23 @@ import json
 from datetime import datetime
 from googletrans import Translator
 import urllib.parse
+import re
+import time
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api.formatters import TextFormatter
+import nltk
+from nltk.tokenize import sent_tokenize
+from nltk.corpus import stopwords
+
+# Download necessary NLTK data
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', quiet=True)
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords', quiet=True)
 
 # API Configuration
 TMDB_API_KEY = "12d8852faa36602d14b98d24eecc10de"  # Replace with your TMDB API key
@@ -223,6 +240,95 @@ def get_youtube_search_url(movie_title, year=None, custom_keywords=None):
     encoded_query = urllib.parse.quote(search_query)
     return f"https://www.youtube.com/results?search_query={encoded_query}"
 
+def get_youtube_transcript(video_id, translate=True):
+    """Get transcript (subtitles) from a YouTube video and optionally translate it to Vietnamese.
+    
+    Args:
+        video_id (str): YouTube video ID
+        translate (bool, optional): Whether to translate transcript to Vietnamese
+        
+    Returns:
+        dict: Contains 'success' (bool), 'transcript' (str), and 'summary' (str)
+    """
+    result = {
+        'success': False,
+        'transcript': '',
+        'summary': ''
+    }
+    
+    try:
+        # Try to get available transcripts
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        
+        # First try to get Vietnamese transcript if translate is True
+        if translate:
+            try:
+                transcript = transcript_list.find_transcript(['vi'])
+                transcript_data = transcript.fetch()
+            except:
+                # If Vietnamese transcript doesn't exist, get any transcript and translate
+                try:
+                    transcript = transcript_list.find_transcript(['en'])
+                    transcript_data = transcript.fetch()
+                except:
+                    # Get any available transcript
+                    transcript = transcript_list.find_generated_transcript(['en'])
+                    transcript_data = transcript.fetch()
+        else:
+            # Get any available transcript
+            try:
+                transcript = transcript_list.find_transcript(['en'])
+                transcript_data = transcript.fetch()
+            except:
+                transcript = transcript_list.find_generated_transcript(['en'])
+                transcript_data = transcript.fetch()
+        
+        # Format transcript data to plain text
+        formatter = TextFormatter()
+        transcript_text = formatter.format_transcript(transcript_data)
+        
+        # Clean transcript
+        transcript_text = re.sub(r'\[.*?\]', '', transcript_text)  # Remove things like [Music], [Applause]
+        transcript_text = re.sub(r'\n+', ' ', transcript_text)  # Replace newlines with spaces
+        transcript_text = re.sub(r'\s+', ' ', transcript_text)  # Remove multiple spaces
+        
+        # Generate summary of transcript (first 200 characters + first 3 sentences)
+        preview = transcript_text[:200] + "..."
+        sentences = sent_tokenize(transcript_text)
+        first_sentences = ' '.join(sentences[:3]) if len(sentences) > 3 else transcript_text
+        
+        # Translate if needed
+        if translate:
+            try:
+                preview = translate_to_vietnamese(preview)
+                first_sentences = translate_to_vietnamese(first_sentences)
+            except:
+                # If translation fails, keep original
+                pass
+        
+        result['success'] = True
+        result['transcript'] = transcript_text
+        result['preview'] = preview
+        result['summary'] = first_sentences
+        
+    except Exception as e:
+        result['summary'] = f"Không thể lấy phụ đề của video: {str(e)}"
+        
+    return result
+
+def extract_video_id(youtube_url):
+    """Extract the video ID from a YouTube URL."""
+    # Regular expressions to find YouTube video ID
+    youtube_regex = (
+        r'(https?://)?(www\.)?'
+        '(youtube|youtu|youtube-nocookie)\.(com|be)/'
+        '(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})')
+    
+    youtube_match = re.match(youtube_regex, youtube_url)
+    if youtube_match:
+        return youtube_match.group(6)
+    return None
+
 def display_movie_info(movie):
     """Display formatted movie information in Vietnamese."""
     # Get full movie details
@@ -261,17 +367,22 @@ def display_movie_info(movie):
     
     # Get YouTube reviews if API key is set
     youtube_reviews = []
-    youtube_keywords = input("\nNhập từ khóa tìm kiếm trên YouTube (để trống để dùng từ khóa mặc định): ")
+    # Không yêu cầu người dùng nhập từ khóa tìm kiếm nữa
+    youtube_keywords = ""  # Để trống để sử dụng từ khóa mặc định
     
     if YOUTUBE_API_KEY != "YOUR_YOUTUBE_API_KEY":
-        if youtube_keywords.strip():
-            youtube_reviews = get_youtube_reviews(title, release_year, limit=10, custom_keywords=youtube_keywords.strip())
-        else:
-            youtube_reviews = get_youtube_reviews(title, release_year, limit=10)
+        youtube_reviews = get_youtube_reviews(title, release_year, limit=10)
     
     # Always generate a YouTube search URL
-    youtube_search_url = get_youtube_search_url(title, release_year, 
-                                              custom_keywords=youtube_keywords.strip() if youtube_keywords.strip() else None)
+    youtube_search_url = get_youtube_search_url(title, release_year)
+    
+    # Get transcript from first YouTube result if available
+    youtube_transcript_result = None
+    if youtube_reviews and len(youtube_reviews) > 0:
+        first_video = youtube_reviews[0]
+        video_id = extract_video_id(first_video['url'])
+        if video_id:
+            youtube_transcript_result = get_youtube_transcript(video_id)
     
     # Directors and top cast members
     directors = []
@@ -347,12 +458,17 @@ def display_movie_info(movie):
             print(f"\n   Đánh giá #{i} - {author}:")
             print(f"   \"{content_vi}\"")
     
+    # Display movie summary
+    print(f"\n📝 TÓM TẮT NỘI DUNG PHIM:\n{overview_vi}")
+    
+    # Display YouTube transcript summary if available (after movie summary)
+    if youtube_transcript_result and youtube_transcript_result['success']:
+        print(f"\n🔤 TÓM TẮT NỘI DUNG VIDEO YOUTUBE:")
+        print(f"   {youtube_transcript_result['summary']}")
+    
     # Display YouTube reviews
     print("\n📺 VIDEOS TRÊN YOUTUBE:")
-    if youtube_keywords.strip():
-        print(f"   Từ khóa tìm kiếm: '{title} {youtube_keywords.strip()}'")
-    else:
-        print(f"   Từ khóa tìm kiếm mặc định: '{title} review đánh giá phim'")
+    print(f"   Từ khóa tìm kiếm mặc định: '{title} review đánh giá phim'")
         
     if youtube_reviews:
         print(f"\n   Tìm thấy {len(youtube_reviews)} video trên YouTube:")
@@ -360,11 +476,10 @@ def display_movie_info(movie):
             published_date = f" ({review['published_at']})" if review['published_at'] else ""
             print(f"   {i}. {review['title']} - {review['channel']}{published_date}")
             print(f"      {review['url']}")
+        
         print(f"\n   Xem thêm: {youtube_search_url}")
     else:
         print(f"   Tìm kiếm trên YouTube: {youtube_search_url}")
-    
-    print(f"\n📝 Tóm tắt nội dung:\n{overview_vi}")
     
     # Display poster URL if available
     if movie_details.get("poster_path"):

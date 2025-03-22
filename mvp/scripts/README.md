@@ -14,8 +14,9 @@
   - Thể loại
   - Đánh giá chi tiết từ nhiều nguồn (TMDB, IMDb, Rotten Tomatoes, Metacritic)
   - Đánh giá từ người xem (có dịch sang tiếng Việt)
-  - Top 10 video YouTube liên quan (với từ khóa tùy chỉnh)
-  - Tóm tắt nội dung
+  - Tóm tắt nội dung phim
+  - Tóm tắt nội dung video YouTube đầu tiên (tự động)
+  - Top 10 video YouTube liên quan
   - Link poster
   - Link IMDb
 
@@ -25,7 +26,7 @@
 - Các thư viện Python được liệt kê trong `requirements.txt`
 - TMDB API key (đăng ký tại [themoviedb.org](https://www.themoviedb.org/settings/api))
 - OMDb API key (đăng ký tại [omdbapi.com](https://www.omdbapi.com/apikey.aspx)) - *Tùy chọn nhưng khuyến khích*
-- YouTube Data API key (đăng ký tại [console.cloud.google.com](https://console.cloud.google.com/apis/library/youtube.googleapis.com)) - *Tùy chọn nhưng khuyến khích*
+- YouTube API key (đăng ký tại [console.cloud.google.com](https://console.cloud.google.com/apis/library/youtube.googleapis.com)) - *Tùy chọn nhưng khuyến khích*
 
 ## Cài đặt
 
@@ -55,33 +56,43 @@ python movie_search.py
 
 3. Chọn một phim từ danh sách kết quả để xem thông tin chi tiết.
 
-4. Khi được nhắc, bạn có thể nhập từ khóa tùy chỉnh để tìm kiếm video trên YouTube:
-   - Để trống: dùng từ khóa mặc định "[tên phim] review đánh giá phim" 
-   - Nhập từ khóa: tìm kiếm "[tên phim] [từ khóa của bạn]"
+4. Thông tin sẽ được hiển thị bằng tiếng Việt, bao gồm:
+   - Thông tin chi tiết về phim
+   - Tóm tắt nội dung phim
+   - Tóm tắt nội dung video YouTube đầu tiên (tự động trích xuất phụ đề)
+   - Danh sách top 10 video YouTube liên quan
 
-5. Thông tin sẽ được hiển thị bằng tiếng Việt, bao gồm top 10 video YouTube liên quan.
+## Thứ tự hiển thị thông tin
+
+Script hiển thị thông tin theo thứ tự sau:
+1. Thông tin cơ bản (tên, ngày phát hành, thể loại, đạo diễn, diễn viên)
+2. Đánh giá từ các nguồn (TMDB, IMDb, Rotten Tomatoes, Metacritic)
+3. Đánh giá từ người xem
+4. Tóm tắt nội dung phim
+5. Tóm tắt nội dung video YouTube đầu tiên (nếu có)
+6. Danh sách các video YouTube liên quan
+7. Link poster
 
 ## Tìm kiếm YouTube
 
-Script tìm kiếm và hiển thị top 10 video YouTube liên quan đến phim:
-
-1. **Tự động với từ khóa mặc định**: Khi để trống cửa sổ nhập từ khóa, script sẽ tìm kiếm sử dụng "[tên phim] review đánh giá phim"
-
-2. **Tùy chỉnh từ khóa**: Bạn có thể nhập từ khóa riêng, ví dụ:
-   - "review" - tìm review đơn giản
-   - "trailer" - tìm trailer phim
-   - "phân tích" - tìm video phân tích phim
-   - "cảnh hay" - tìm cảnh đáng nhớ
-   - "hậu trường" - tìm video hậu trường
-   - "phỏng vấn" - tìm phỏng vấn diễn viên, đạo diễn
-
-Từ khóa của bạn sẽ được kết hợp với tên phim: "[tên phim] [từ khóa của bạn]"
+Script tự động tìm kiếm video liên quan trên YouTube bằng từ khóa mặc định: "[tên phim] review đánh giá phim"
 
 Mỗi kết quả đều hiển thị:
 - Tiêu đề video
 - Tên kênh
 - Ngày đăng
 - Link trực tiếp đến video
+
+## Tính năng phụ đề YouTube
+
+Script tự động trích xuất phụ đề từ video YouTube đầu tiên trong kết quả tìm kiếm:
+
+1. **Trích xuất tự động**: Lấy phụ đề video đầu tiên (nếu có) và hiển thị tóm tắt
+2. **Ưu tiên phụ đề tiếng Việt**: Nếu video có phụ đề tiếng Việt, sẽ sử dụng phụ đề đó
+3. **Tự động dịch**: Nếu chỉ có phụ đề tiếng Anh, sẽ tự động dịch sang tiếng Việt
+4. **Tóm tắt thông minh**: Hiển thị 3 câu đầu tiên của phụ đề để nắm được nội dung chính
+
+Tính năng này giúp hiểu nhanh nội dung video mà không cần phải xem.
 
 ## Thông tin về API
 
@@ -102,7 +113,8 @@ Mỗi kết quả đều hiển thị:
 
 ## Lưu ý
 
-- Script này sử dụng TMDB API để lấy thông tin phim, OMDb API để lấy thông tin đánh giá, YouTube API để tìm video liên quan, và dịch vụ Google Translate để dịch sang tiếng Việt.
+- Script này sử dụng TMDB API để lấy thông tin phim, OMDb API để lấy thông tin đánh giá, YouTube API để tìm video liên quan, YouTube Transcript API để lấy phụ đề, và dịch vụ Google Translate để dịch sang tiếng Việt.
 - Tốc độ và chất lượng dịch có thể phụ thuộc vào kết nối mạng và hạn chế của API.
+- Không phải tất cả các video YouTube đều có phụ đề. Nếu video không có phụ đề, tính năng tóm tắt nội dung video sẽ không hiển thị.
 - Nếu không có OMDb API key, script vẫn hoạt động nhưng sẽ không hiển thị đánh giá từ IMDb, Rotten Tomatoes và Metacritic.
 - Nếu không có YouTube API key, script sẽ chỉ hiển thị link tìm kiếm YouTube thay vì các video cụ thể. 
