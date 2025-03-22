@@ -14,10 +14,15 @@ import requests
 import json
 from datetime import datetime
 from googletrans import Translator
+import urllib.parse
 
 # API Configuration
 TMDB_API_KEY = "12d8852faa36602d14b98d24eecc10de"  # Replace with your TMDB API key
+OMDB_API_KEY = "f7011e0e"  # Replace with your OMDb API key
+YOUTUBE_API_KEY = "AIzaSyAEYuawmYGIOJNKZ2Ey8G8LLcdFzs-rDVE"  # Replace with your YouTube API key
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
+OMDB_BASE_URL = "http://www.omdbapi.com/"
+YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3/search"
 TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 LANGUAGE = "en-US"
 
@@ -86,6 +91,48 @@ def get_movie_credits(movie_id):
         print(f"Error getting movie credits: {e}")
         return None
 
+def get_omdb_ratings(title, year=None):
+    """Get ratings from OMDb API (IMDb, Rotten Tomatoes, Metacritic)."""
+    params = {
+        "apikey": OMDB_API_KEY,
+        "t": title,
+        "type": "movie",
+        "r": "json"
+    }
+    
+    if year:
+        params["y"] = year
+        
+    try:
+        response = requests.get(OMDB_BASE_URL, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data.get("Response") == "True":
+            return data.get("Ratings", []), data.get("imdbID", "")
+        return [], ""
+    except requests.exceptions.RequestException as e:
+        print(f"Error getting OMDb data: {e}")
+        return [], ""
+
+def get_movie_reviews(movie_id, limit=3):
+    """Get user reviews for a movie."""
+    url = f"{TMDB_BASE_URL}/movie/{movie_id}/reviews"
+    params = {
+        "api_key": TMDB_API_KEY,
+        "language": LANGUAGE,
+        "page": 1
+    }
+    
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        results = response.json().get("results", [])
+        return results[:limit]  # Return only the first 'limit' reviews
+    except requests.exceptions.RequestException as e:
+        print(f"Error getting movie reviews: {e}")
+        return []
+
 def format_date(date_str):
     """Format date string to Vietnamese format."""
     if not date_str:
@@ -95,6 +142,86 @@ def format_date(date_str):
         return date_obj.strftime("%d/%m/%Y")
     except ValueError:
         return date_str
+
+def format_rating_source(source):
+    """Translate rating source names to Vietnamese."""
+    sources = {
+        "Internet Movie Database": "IMDb",
+        "Rotten Tomatoes": "Rotten Tomatoes",
+        "Metacritic": "Metacritic"
+    }
+    return sources.get(source, source)
+
+def get_youtube_reviews(movie_title, year=None, limit=10, custom_keywords=None):
+    """Search for movie reviews on YouTube.
+    
+    Args:
+        movie_title (str): The title of the movie
+        year (str, optional): Release year of the movie
+        limit (int, optional): Maximum number of results to return
+        custom_keywords (str, optional): Custom search keywords provided by user
+        
+    Returns:
+        list: List of YouTube video information
+    """
+    # If YouTube API key is not set, return empty list
+    if YOUTUBE_API_KEY == "YOUR_YOUTUBE_API_KEY":
+        return []
+    
+    # Prepare search query
+    if custom_keywords:
+        # Use custom keywords with movie title
+        search_query = f"{movie_title} {custom_keywords}"
+    else:
+        # Default search query
+        search_query = f"{movie_title} review đánh giá phim"
+    
+    # Prepare API request
+    params = {
+        "key": YOUTUBE_API_KEY,
+        "q": search_query,
+        "part": "snippet",
+        "type": "video",
+        "maxResults": limit,
+        "relevanceLanguage": "vi"
+    }
+    
+    try:
+        response = requests.get(YOUTUBE_API_URL, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        results = []
+        for item in data.get("items", []):
+            video_id = item.get("id", {}).get("videoId", "")
+            title = item.get("snippet", {}).get("title", "")
+            channel = item.get("snippet", {}).get("channelTitle", "")
+            published_at = item.get("snippet", {}).get("publishedAt", "")
+            thumbnail = item.get("snippet", {}).get("thumbnails", {}).get("medium", {}).get("url", "")
+            
+            if video_id and title:
+                results.append({
+                    "title": title,
+                    "channel": channel,
+                    "url": f"https://www.youtube.com/watch?v={video_id}",
+                    "published_at": published_at[:10] if published_at else "",  # Just get the date part
+                    "thumbnail": thumbnail
+                })
+                
+        return results
+    except Exception as e:
+        print(f"Error searching YouTube: {e}")
+        return []
+
+def get_youtube_search_url(movie_title, year=None, custom_keywords=None):
+    """Generate YouTube search URL for a movie."""
+    if custom_keywords:
+        search_query = f"{movie_title} {custom_keywords}"
+    else:
+        search_query = f"{movie_title} review đánh giá phim"
+    
+    encoded_query = urllib.parse.quote(search_query)
+    return f"https://www.youtube.com/results?search_query={encoded_query}"
 
 def display_movie_info(movie):
     """Display formatted movie information in Vietnamese."""
@@ -107,7 +234,9 @@ def display_movie_info(movie):
     # Basic information
     title = movie_details.get("title", "Không có tên")
     original_title = movie_details.get("original_title", "")
-    release_date = format_date(movie_details.get("release_date", ""))
+    release_date = movie_details.get("release_date", "")
+    release_year = release_date[:4] if release_date else None
+    formatted_release_date = format_date(release_date)
     runtime = movie_details.get("runtime", 0)
     
     # Production companies
@@ -123,9 +252,26 @@ def display_movie_info(movie):
     # Overview/Plot
     overview = movie_details.get("overview", "Không có mô tả")
     
-    # Ratings
+    # TMDB Ratings
     vote_average = movie_details.get("vote_average", 0)
     vote_count = movie_details.get("vote_count", 0)
+    
+    # Get external ratings from OMDb
+    omdb_ratings, imdb_id = get_omdb_ratings(title, release_year)
+    
+    # Get YouTube reviews if API key is set
+    youtube_reviews = []
+    youtube_keywords = input("\nNhập từ khóa tìm kiếm trên YouTube (để trống để dùng từ khóa mặc định): ")
+    
+    if YOUTUBE_API_KEY != "YOUR_YOUTUBE_API_KEY":
+        if youtube_keywords.strip():
+            youtube_reviews = get_youtube_reviews(title, release_year, limit=10, custom_keywords=youtube_keywords.strip())
+        else:
+            youtube_reviews = get_youtube_reviews(title, release_year, limit=10)
+    
+    # Always generate a YouTube search URL
+    youtube_search_url = get_youtube_search_url(title, release_year, 
+                                              custom_keywords=youtube_keywords.strip() if youtube_keywords.strip() else None)
     
     # Directors and top cast members
     directors = []
@@ -139,6 +285,9 @@ def display_movie_info(movie):
     for cast_member in credits.get("cast", [])[:5]:  # Get top 5 cast members
         cast.append(cast_member.get("name", ""))
     
+    # Get reviews
+    reviews = get_movie_reviews(movie["id"], limit=2)
+    
     # Translate information to Vietnamese
     title_vi = translate_to_vietnamese(title) if title != original_title else title
     original_title_vi = f" ({original_title})" if original_title and original_title != title else ""
@@ -147,11 +296,11 @@ def display_movie_info(movie):
     production_companies_vi = [translate_to_vietnamese(company) for company in production_companies]
     
     # Format and display information
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     print(f"🎬 {title_vi}{original_title_vi}")
-    print("=" * 50)
+    print("=" * 60)
     
-    print(f"\n📅 Ngày phát hành: {release_date}")
+    print(f"\n📅 Ngày phát hành: {formatted_release_date}")
     if runtime:
         hours, minutes = divmod(runtime, 60)
         print(f"⏱️ Thời lượng: {hours}h {minutes}m")
@@ -167,7 +316,53 @@ def display_movie_info(movie):
     if production_companies_vi:
         print(f"\n🏢 Hãng sản xuất: {', '.join(production_companies_vi)}")
     
-    print(f"\n⭐ Đánh giá: {vote_average}/10 (dựa trên {vote_count} lượt đánh giá)")
+    # Display ratings
+    print("\n⭐ ĐÁNH GIÁ:")
+    print(f"   • TMDB: {vote_average}/10 (dựa trên {vote_count} lượt đánh giá)")
+    
+    if imdb_id:
+        imdb_url = f"https://www.imdb.com/title/{imdb_id}"
+        print(f"   • IMDb URL: {imdb_url}")
+        
+    if omdb_ratings:
+        for rating in omdb_ratings:
+            source = format_rating_source(rating.get("Source", ""))
+            value = rating.get("Value", "N/A")
+            print(f"   • {source}: {value}")
+    
+    # Display reviews if available
+    if reviews:
+        print(f"\n📣 ĐÁNH GIÁ TỪ NGƯỜI XEM ({len(reviews)}):")
+        for i, review in enumerate(reviews, 1):
+            author = review.get("author", "Ẩn danh")
+            content = review.get("content", "")
+            
+            # Truncate review content if it's too long
+            if len(content) > 200:
+                content = content[:197] + "..."
+                
+            # Translate review content
+            content_vi = translate_to_vietnamese(content)
+            
+            print(f"\n   Đánh giá #{i} - {author}:")
+            print(f"   \"{content_vi}\"")
+    
+    # Display YouTube reviews
+    print("\n📺 VIDEOS TRÊN YOUTUBE:")
+    if youtube_keywords.strip():
+        print(f"   Từ khóa tìm kiếm: '{title} {youtube_keywords.strip()}'")
+    else:
+        print(f"   Từ khóa tìm kiếm mặc định: '{title} review đánh giá phim'")
+        
+    if youtube_reviews:
+        print(f"\n   Tìm thấy {len(youtube_reviews)} video trên YouTube:")
+        for i, review in enumerate(youtube_reviews, 1):
+            published_date = f" ({review['published_at']})" if review['published_at'] else ""
+            print(f"   {i}. {review['title']} - {review['channel']}{published_date}")
+            print(f"      {review['url']}")
+        print(f"\n   Xem thêm: {youtube_search_url}")
+    else:
+        print(f"   Tìm kiếm trên YouTube: {youtube_search_url}")
     
     print(f"\n📝 Tóm tắt nội dung:\n{overview_vi}")
     
@@ -176,17 +371,29 @@ def display_movie_info(movie):
         poster_url = f"{TMDB_IMAGE_BASE_URL}{movie_details['poster_path']}"
         print(f"\n🖼️ Poster: {poster_url}")
     
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
 
 def main():
     """Main function to run the movie search script."""
     print("\n=== TÌM KIẾM THÔNG TIN PHIM ===\n")
     
-    # Check if API key is set
+    # Check if API keys are set
     if TMDB_API_KEY == "YOUR_TMDB_API_KEY":
         print("Lỗi: Vui lòng thiết lập TMDB API KEY trong script.")
         print("Bạn có thể đăng ký API key tại: https://www.themoviedb.org/settings/api")
         sys.exit(1)
+        
+    if OMDB_API_KEY == "your_omdb_api_key":
+        print("Cảnh báo: OMDb API KEY chưa được cài đặt.")
+        print("Thông tin đánh giá chi tiết từ IMDb, Rotten Tomatoes và Metacritic sẽ không khả dụng.")
+        print("Bạn có thể đăng ký API key tại: https://www.omdbapi.com/apikey.aspx")
+        print("Tiếp tục mà không có thông tin đánh giá chi tiết...\n")
+    
+    if YOUTUBE_API_KEY == "YOUR_YOUTUBE_API_KEY":
+        print("Cảnh báo: YouTube API KEY chưa được cài đặt.")
+        print("Tìm kiếm đánh giá phim trên YouTube sẽ không khả dụng.")
+        print("Bạn có thể đăng ký API key tại: https://console.cloud.google.com/apis/library/youtube.googleapis.com")
+        print("Tiếp tục mà không có tìm kiếm YouTube nâng cao...\n")
     
     while True:
         # Get movie title from user
