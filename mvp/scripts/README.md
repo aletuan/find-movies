@@ -20,6 +20,27 @@
   - Link poster
   - Link IMDb
 
+## Cấu trúc dự án
+
+Dự án được tổ chức thành các module để dễ bảo trì và mở rộng:
+
+```
+mvp/scripts/
+├── api/               # Chứa các module API 
+│   ├── __init__.py
+│   ├── tmdb.py        # Xử lý API của The Movie Database
+│   ├── omdb.py        # Xử lý API của Open Movie Database
+│   └── youtube.py     # Xử lý API của YouTube và lấy phụ đề
+├── utils/             # Chứa các module tiện ích
+│   ├── __init__.py
+│   ├── translator.py  # Hàm dịch thuật
+│   └── formatter.py   # Hàm định dạng và xử lý văn bản
+├── config.py          # Cấu hình (API keys, URLs, hằng số)
+├── main.py            # Điểm vào chương trình
+├── README.md          # Tài liệu
+└── requirements.txt   # Thư viện cần thiết
+```
+
 ## Yêu cầu
 
 - Python 3.6 trở lên
@@ -36,7 +57,7 @@
 pip install -r requirements.txt
 ```
 
-2. Mở file `movie_search.py` và thay đổi giá trị của các biến API key:
+2. Mở file `config.py` và thay đổi giá trị của các biến API key:
 
 ```python
 TMDB_API_KEY = "your_tmdb_api_key_here"  # Thay thế bằng TMDB API key của bạn
@@ -49,7 +70,7 @@ YOUTUBE_API_KEY = "your_youtube_api_key_here"  # Thay thế bằng YouTube API k
 1. Chạy script:
 
 ```bash
-python movie_search.py
+python main.py
 ```
 
 2. Nhập tên phim cần tìm kiếm khi được yêu cầu.
@@ -62,37 +83,14 @@ python movie_search.py
    - Tóm tắt nội dung video YouTube đầu tiên (tự động trích xuất phụ đề)
    - Danh sách top 10 video YouTube liên quan
 
-## Thứ tự hiển thị thông tin
+## Mở rộng
 
-Script hiển thị thông tin theo thứ tự sau:
-1. Thông tin cơ bản (tên, ngày phát hành, thể loại, đạo diễn, diễn viên)
-2. Đánh giá từ các nguồn (TMDB, IMDb, Rotten Tomatoes, Metacritic)
-3. Đánh giá từ người xem
-4. Tóm tắt nội dung phim
-5. Tóm tắt nội dung video YouTube đầu tiên (nếu có)
-6. Danh sách các video YouTube liên quan
-7. Link poster
+Script được thiết kế theo kiến trúc module, dễ dàng mở rộng:
 
-## Tìm kiếm YouTube
-
-Script tự động tìm kiếm video liên quan trên YouTube bằng từ khóa mặc định: "[tên phim] review đánh giá phim"
-
-Mỗi kết quả đều hiển thị:
-- Tiêu đề video
-- Tên kênh
-- Ngày đăng
-- Link trực tiếp đến video
-
-## Tính năng phụ đề YouTube
-
-Script tự động trích xuất phụ đề từ video YouTube đầu tiên trong kết quả tìm kiếm:
-
-1. **Trích xuất tự động**: Lấy phụ đề video đầu tiên (nếu có) và hiển thị tóm tắt
-2. **Ưu tiên phụ đề tiếng Việt**: Nếu video có phụ đề tiếng Việt, sẽ sử dụng phụ đề đó
-3. **Tự động dịch**: Nếu chỉ có phụ đề tiếng Anh, sẽ tự động dịch sang tiếng Việt
-4. **Tóm tắt thông minh**: Hiển thị 3 câu đầu tiên của phụ đề để nắm được nội dung chính
-
-Tính năng này giúp hiểu nhanh nội dung video mà không cần phải xem.
+1. **Thêm API mới**: Tạo module mới trong thư mục `api/` và thêm các hàm gọi API cần thiết
+2. **Thêm tiện ích mới**: Tạo hoặc mở rộng module trong thư mục `utils/`
+3. **Thay đổi cấu hình**: Cập nhật file `config.py` để thêm hằng số hoặc tham số mới
+4. **Thay đổi giao diện**: Điều chỉnh hàm `display_movie_info()` trong `main.py`
 
 ## Thông tin về API
 
