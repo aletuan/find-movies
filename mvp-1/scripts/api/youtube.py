@@ -16,7 +16,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import YOUTUBE_API_KEY, YOUTUBE_API_URL, DEFAULT_SEARCH_SUFFIX, YOUTUBE_RESULT_LIMIT
 
 def get_youtube_reviews(movie_title, year=None, limit=None, custom_keywords=None):
-    """Search for movie reviews on YouTube.
+    """Search for movie reviews on YouTube using the YouTube API.
     
     Args:
         movie_title (str): The title of the movie
@@ -32,20 +32,12 @@ def get_youtube_reviews(movie_title, year=None, limit=None, custom_keywords=None
         limit = YOUTUBE_RESULT_LIMIT
         
     # If YouTube API key is not set, return empty list
-    if not YOUTUBE_API_KEY or YOUTUBE_API_KEY == "YOUR_YOUTUBE_API_KEY":
+    if not check_api_key():
         return []
     
     # Prepare search query
-    if year:
-        query = f"{movie_title} {year}"
-    else:
-        query = movie_title
-        
-    # Add custom keywords or default suffix
-    if custom_keywords:
-        query += f" {custom_keywords}"
-    else:
-        query += f" {DEFAULT_SEARCH_SUFFIX}"
+    query = f"{movie_title} {year}" if year else movie_title
+    query += f" {custom_keywords}" if custom_keywords else f" {DEFAULT_SEARCH_SUFFIX}"
     
     # Set up API request
     params = {
@@ -60,6 +52,7 @@ def get_youtube_reviews(movie_title, year=None, limit=None, custom_keywords=None
     try:
         # Make API request
         response = requests.get(YOUTUBE_API_URL, params=params)
+        response.raise_for_status()
         data = response.json()
         
         # Process results
@@ -83,28 +76,9 @@ def get_youtube_reviews(movie_title, year=None, limit=None, custom_keywords=None
                 })
                 
         return results
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         print(f"Error searching YouTube: {e}")
         return []
-
-def get_youtube_search_url(movie_title, year=None, custom_keywords=None):
-    """Generate YouTube search URL for a movie.
-    
-    Args:
-        movie_title (str): Movie title
-        year (str, optional): Release year
-        custom_keywords (str, optional): Custom search keywords
-        
-    Returns:
-        str: YouTube search URL
-    """
-    if custom_keywords:
-        search_query = f"{movie_title} {custom_keywords}"
-    else:
-        search_query = f"{movie_title} {DEFAULT_SEARCH_SUFFIX}"
-    
-    encoded_query = urllib.parse.quote(search_query)
-    return f"https://www.youtube.com/results?search_query={encoded_query}"
 
 def check_api_key():
     """Check if the YouTube API key is valid.

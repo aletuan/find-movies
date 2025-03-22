@@ -47,9 +47,6 @@ def display_movie_info(movie):
     # Get YouTube reviews
     youtube_reviews = youtube.get_youtube_reviews(movie_data["title"], movie_data["release_year"])
     
-    # Generate YouTube search URL
-    youtube_search_url = youtube.get_youtube_search_url(movie_data["title"], movie_data["release_year"])
-    
     # Get Wikipedia plot
     wiki_plot_data = wikipedia.get_movie_plot(movie_data["title"], movie_data["release_year"])
     
@@ -90,7 +87,9 @@ def display_movie_info(movie):
 {UI_ICONS['cast']} Diễn viên chính: {', '.join(movie_data['cast'])}
 {UI_ICONS['company']} Hãng sản xuất: {', '.join(production_companies_vi)}
 """
-    console.print(Panel(basic_info, title=movie_title, border_style="blue"))
+    # Include the movie title in the panel content
+    panel_content = f"{movie_title}\n{basic_info}"
+    console.print(Panel(panel_content, border_style="blue"))
 
     # Display ratings using a table
     if omdb_details['success'] and omdb_details['ratings']:
@@ -116,22 +115,26 @@ def display_movie_info(movie):
     if wiki_plot_data['success']:
         console.print(Panel(wiki_plot_vi, title="TÓM TẮT CỐT TRUYỆN (WIKIPEDIA)", border_style="green"))
 
-    # Display YouTube reviews using Rich Panel
+    # Display YouTube reviews using Rich Table
     console.print(f"\n{UI_ICONS['youtube']} VIDEOS TRÊN YOUTUBE:")
     if youtube_reviews:
+        # Create a table for YouTube reviews
+        youtube_table = Table(title="YouTube Reviews")
+        youtube_table.add_column("#", justify="right", style="cyan", no_wrap=True)
+        youtube_table.add_column("Title", style="magenta")
+        youtube_table.add_column("Channel", style="green")
+        youtube_table.add_column("Published Date", style="yellow")
+        
         for i, review in enumerate(youtube_reviews, 1):
             published_date = review['published_at'] if review['published_at'] else "N/A"
-            video_info = f"Kênh: {review['channel']}\nNgày xuất bản: {published_date}"
             video_title = f"[link={review['url']}] {review['title']} [/link]"
-            console.print(Panel(video_info, title=video_title, border_style="blue"))
-        console.print(f"\nXem thêm: {youtube_search_url}")
-    else:
-        console.print(f"Tìm kiếm trên YouTube: {youtube_search_url}")
+            youtube_table.add_row(str(i), video_title, review['channel'], published_date)
+        console.print(youtube_table)
 
     # Display poster URL if available
     if movie_data["poster_path"]:
         poster_url = f"{TMDB_IMAGE_BASE_URL}{movie_data['poster_path']}"
-        console.print(f"\n{UI_ICONS['poster']} Poster: {poster_url}")
+        console.print(f"\n{UI_ICONS['poster']}  Poster: {poster_url}")
 
     console.print("\n" + UI_SEPARATOR)
 
