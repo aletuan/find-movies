@@ -2,119 +2,133 @@
 # -*- coding: utf-8 -*-
 
 """
-Movie Search Script (Beta Version)
---------------------------------
-This script uses ChatGPT API to search and display detailed movie information in Vietnamese.
+Movie Search and Analysis Script
+------------------------------
+This script allows users to search for movie information and get AI-powered analysis.
+It uses OMDb API for movie data and OpenAI for analysis.
 """
 
-import json
 import sys
+from rich.console import Console
 from rich.panel import Panel
-from config import console, UI_ICONS, UI_SEPARATOR, create_movie_panel, create_rating_table
-from movie_ai import MovieAI
+from rich.table import Table
 
-def display_movie_info(movie_data):
-    """Display formatted movie information using Rich."""
-    # Create main movie panel
-    movie_title = f"{UI_ICONS['movie']} {movie_data['title_vi']}"
-    if movie_data.get('title_en'):
-        movie_title += f" ({movie_data['title_en']})"
+from api import omdb, openai_helper
+from config import UI_SEPARATOR, UI_ICONS
+
+console = Console()
+
+def display_movie_info(movie_details):
+    """Display formatted movie information and AI analysis."""
+    if not movie_details:
+        console.print("[red]Không thể lấy thông tin chi tiết của phim.[/red]")
+        return
     
-    # Basic information
+    # Format basic information
+    title = f"{UI_ICONS['movie']} {movie_details['Title']} ({movie_details['Year']})"
     basic_info = f"""
-{UI_ICONS['date']} Ngày phát hành: {movie_data['release_year']}
-{UI_ICONS['duration']} Thời lượng: {movie_data['duration']}
-{UI_ICONS['genre']} Thể loại: {', '.join(movie_data['genres'])}
-{UI_ICONS['director']} Đạo diễn: {movie_data['director']}
-{UI_ICONS['cast']} Diễn viên chính: {', '.join(movie_data['cast'])}
-{UI_ICONS['company']} Hãng sản xuất: {movie_data['production_company']}
+{UI_ICONS['duration']} Thời lượng: {movie_details['Runtime']}
+{UI_ICONS['genre']} Thể loại: {movie_details['Genre']}
+{UI_ICONS['director']} Đạo diễn: {movie_details['Director']}
+{UI_ICONS['cast']} Diễn viên: {movie_details['Actors']}
 """
     
     # Display basic information
-    console.print(create_movie_panel(movie_title, basic_info))
+    console.print(Panel(f"{title}\n{basic_info}", border_style="blue"))
     
     # Display ratings
-    if movie_data.get('ratings'):
-        console.print(f"\n{UI_ICONS['rating']} ĐÁNH GIÁ:")
-        console.print(create_rating_table(movie_data['ratings']))
+    if movie_details.get('Ratings'):
+        table = Table(title="ĐÁNH GIÁ")
+        table.add_column("Nguồn", justify="right", style="cyan")
+        table.add_column("Điểm", style="magenta")
+        
+        for rating in movie_details['Ratings']:
+            table.add_row(rating['Source'], rating['Value'])
+        console.print(table)
     
-    # Display awards
-    if movie_data.get('awards'):
-        console.print(f"\n{UI_ICONS['award']} GIẢI THƯỞNG:")
-        console.print(Panel(movie_data['awards'], title="Giải thưởng", border_style="yellow"))
+    # Display awards if available
+    if movie_details.get('Awards') and movie_details['Awards'] != 'N/A':
+        console.print(Panel(movie_details['Awards'], title=f"{UI_ICONS['award']} GIẢI THƯỞNG", border_style="yellow"))
     
-    # Display summary
-    console.print(f"\n{UI_ICONS['summary']} TÓM TẮT NỘI DUNG PHIM:")
-    console.print(Panel(movie_data['summary'], title="Nội dung", border_style="green"))
+    # Get and display AI analysis
+    console.print(f"\n{UI_ICONS['review']} PHÂN TÍCH VÀ ĐÁNH GIÁ:")
+    analysis_result = openai_helper.get_movie_analysis(movie_details)
+    
+    if analysis_result['success']:
+        console.print(Panel(analysis_result['analysis'], border_style="green"))
+    else:
+        console.print(f"[red]{analysis_result['error']}[/red]")
     
     # Display poster URL if available
-    if movie_data.get('poster_url'):
-        console.print(f"\n{UI_ICONS['poster']} Poster: {movie_data['poster_url']}")
+    if movie_details.get('Poster') and movie_details['Poster'] != 'N/A':
+        console.print(f"\n{UI_ICONS['poster']} Poster: {movie_details['Poster']}")
     
     console.print("\n" + UI_SEPARATOR)
 
 def main():
     """Main function to run the movie search script."""
-    console.print("\n=== TÌM KIẾM THÔNG TIN PHIM (BETA) ===\n")
+    print("\n=== TÌM KIẾM VÀ PHÂN TÍCH PHIM ===\n")
     
-    # Initialize MovieAI
-    movie_ai = MovieAI()
+    # Check API keys
+    if not omdb.check_api_key():
+        sys.exit(1)
+    openai_helper.check_api_key()
     
     while True:
         # Get movie title from user
         query = input("\nNhập tên phim (hoặc 'q' để thoát): ")
         
         if query.lower() in ['q', 'quit', 'exit']:
-            console.print("\nCảm ơn bạn đã sử dụng tìm kiếm phim. Tạm biệt!")
+            print("\nCảm ơn bạn đã sử dụng chương trình. Tạm biệt!")
             break
         
         if not query.strip():
-            console.print("Vui lòng nhập tên phim.")
+            print("Vui lòng nhập tên phim.")
             continue
         
-        console.print(f"\n{UI_ICONS['search']} Đang tìm kiếm thông tin về phim '{query}'...")
+        print(f"\nĐang tìm kiếm phim '{query}'...")
         
-        # Search for movie information
-        movie_data = movie_ai.search_movie(query)
+        # Search for movies
+        movies = omdb.search_movies(query)
         
-        if isinstance(movie_data, dict) and movie_data.get('error'):
-            console.print(f"{UI_ICONS['error']} Lỗi: {movie_data['error']}")
-            continue
-        
-        try:
-            # Parse JSON response
-            movie_data = json.loads(movie_data)
+        # Display search results
+        if movies:
+            table = Table(title="KẾT QUẢ TÌM KIẾM")
+            table.add_column("#", justify="right", style="cyan")
+            table.add_column("Tên phim", style="magenta")
+            table.add_column("Năm", style="green")
+            table.add_column("IMDb ID", style="blue")
             
-            # Display movie information
-            display_movie_info(movie_data)
+            for i, movie in enumerate(movies[:10], 1):
+                table.add_row(
+                    str(i),
+                    movie.get('Title', 'N/A'),
+                    movie.get('Year', 'N/A'),
+                    movie.get('imdbID', 'N/A')
+                )
+            console.print(table)
             
-            # Get and display reviews
-            console.print(f"\n{UI_ICONS['review']} Đang tìm kiếm đánh giá...")
-            reviews = movie_ai.get_movie_reviews(movie_data['title_en'], movie_data['release_year'])
-            
-            if isinstance(reviews, dict) and reviews.get('error'):
-                console.print(f"{UI_ICONS['error']} Lỗi khi lấy đánh giá: {reviews['error']}")
-            else:
-                reviews_data = json.loads(reviews)
-                if reviews_data.get('critic_reviews'):
-                    console.print("\nĐánh giá từ giới phê bình:")
-                    console.print(Panel(reviews_data['critic_reviews'], border_style="blue"))
-                
-                if reviews_data.get('user_reviews'):
-                    console.print("\nĐánh giá từ người xem:")
-                    console.print(Panel(reviews_data['user_reviews'], border_style="cyan"))
-                
-                if reviews_data.get('youtube_reviews'):
-                    console.print(f"\n{UI_ICONS['youtube']} Video Review trên YouTube:")
-                    for review in reviews_data['youtube_reviews']:
-                        console.print(f"• {review['title']} - {review['url']}")
-            
-            input("\nNhấn Enter để tiếp tục...")
-            
-        except json.JSONDecodeError:
-            console.print(f"{UI_ICONS['error']} Lỗi: Không thể xử lý dữ liệu trả về từ API")
-        except Exception as e:
-            console.print(f"{UI_ICONS['error']} Lỗi: {str(e)}")
+            # Let user select a movie
+            while True:
+                try:
+                    selection = input("\nChọn số để xem chi tiết (hoặc 'b' để quay lại): ")
+                    
+                    if selection.lower() == 'b':
+                        break
+                    
+                    idx = int(selection) - 1
+                    if 0 <= idx < len(movies[:10]):
+                        # Get and display movie details
+                        movie_details = omdb.get_movie_details(movies[idx]['imdbID'])
+                        display_movie_info(movie_details)
+                        input("\nNhấn Enter để tiếp tục...")
+                        break
+                    else:
+                        print("Lựa chọn không hợp lệ. Vui lòng thử lại.")
+                except ValueError:
+                    print("Vui lòng nhập một số hợp lệ.")
+        else:
+            console.print("[red]Không tìm thấy phim nào. Vui lòng thử lại với từ khóa khác.[/red]")
 
 if __name__ == "__main__":
     main() 

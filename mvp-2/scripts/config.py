@@ -1,33 +1,48 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Configuration file for the Movie Search Script.
+Contains API keys, URLs, and other constants.
+"""
+
+import os
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 from rich.table import Table
 
+# Load environment variables from .env file
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+load_dotenv(dotenv_path)
+
+# API keys
+OMDB_API_KEY = os.getenv("OMDB_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Base URLs
+OMDB_BASE_URL = "http://www.omdbapi.com/"
+
 # Initialize Rich console
 console = Console()
 
-# UI Icons
+# UI symbols and formatting
+UI_SEPARATOR = "=" * 60
 UI_ICONS = {
-    'movie': '🎬',
-    'date': '📅',
-    'duration': '⏱️',
-    'genre': '🎭',
-    'director': '🎯',
-    'cast': '👥',
-    'company': '🏢',
-    'rating': '⭐',
-    'award': '🏆',
-    'review': '📝',
-    'summary': '📖',
-    'youtube': '🎥',
-    'poster': '🖼️',
-    'search': '🔍',
-    'error': '❌',
-    'success': '✅'
+    "movie": "🎬",
+    "date": "📅",
+    "duration": "⏱️",
+    "genre": "🎭",
+    "director": "🎬",
+    "cast": "🌟",
+    "company": "🏢",
+    "rating": "⭐",
+    "review": "📣",
+    "summary": "📝",
+    "poster": "🖼️",
+    "award": "🏆"
 }
-
-# UI Separator
-UI_SEPARATOR = "=" * 80
 
 def create_movie_panel(title, content):
     """Create a rich panel for displaying movie information."""
