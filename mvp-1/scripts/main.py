@@ -116,18 +116,14 @@ def display_movie_info(movie):
     if wiki_plot_data['success']:
         console.print(Panel(wiki_plot_vi, title="TÓM TẮT CỐT TRUYỆN (WIKIPEDIA)", border_style="green"))
 
-    # Display YouTube reviews using Rich Table
+    # Display YouTube reviews using Rich Panel
     console.print(f"\n{UI_ICONS['youtube']} VIDEOS TRÊN YOUTUBE:")
     if youtube_reviews:
-        table = Table(title="VIDEO REVIEW")
-        table.add_column("#", justify="right", style="cyan", no_wrap=True)
-        table.add_column("Tiêu đề", style="magenta")
-        table.add_column("Kênh", style="green")
-        table.add_column("Ngày xuất bản", style="yellow")
         for i, review in enumerate(youtube_reviews, 1):
             published_date = review['published_at'] if review['published_at'] else "N/A"
-            table.add_row(str(i), review['title'], review['channel'], published_date)
-        console.print(table)
+            video_info = f"Kênh: {review['channel']}\nNgày xuất bản: {published_date}"
+            video_title = f"[link={review['url']}] {review['title']} [/link]"
+            console.print(Panel(video_info, title=video_title, border_style="blue"))
         console.print(f"\nXem thêm: {youtube_search_url}")
     else:
         console.print(f"Tìm kiếm trên YouTube: {youtube_search_url}")
@@ -167,6 +163,9 @@ def main():
         # Search for movies
         movies = tmdb.search_movie(query)
         
+        # Sort movies by release date (newest first)
+        movies.sort(key=lambda x: x.get('release_date', ''), reverse=True)
+
         # Display search results using Rich Table
         if movies:
             table = Table(title="KẾT QUẢ TÌM KIẾM")
