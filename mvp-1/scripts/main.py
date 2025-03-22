@@ -136,8 +136,14 @@ def display_movie_info(movie):
     # Display YouTube reviews using Rich Table
     console.print(f"\n{UI_ICONS['youtube']} VIDEOS TRÊN YOUTUBE:")
     if youtube_reviews:
+        # Sort reviews by published date (newest first)
+        youtube_reviews.sort(
+            key=lambda x: x['published_at'] if x['published_at'] else "0000-00-00",
+            reverse=True
+        )
+        
         # Create a table for YouTube reviews
-        youtube_table = Table(title="YouTube Reviews")
+        youtube_table = Table(title="YouTube Reviews (Mới nhất)")
         youtube_table.add_column("#", justify="right", style="cyan", no_wrap=True)
         youtube_table.add_column("Title", style="magenta")
         youtube_table.add_column("Channel", style="green")
@@ -148,6 +154,52 @@ def display_movie_info(movie):
             video_title = f"[link={review['url']}] {review['title']} [/link]"
             youtube_table.add_row(str(i), video_title, review['channel'], published_date)
         console.print(youtube_table)
+        
+        # Automatically get transcript for the most recent review
+        if len(youtube_reviews) > 0:
+            latest_video = youtube_reviews[0]
+            console.print(f"\n{UI_ICONS['transcript']} Phụ đề của video mới nhất:")
+            console.print(f"[dim]Video: {latest_video['title']}[/dim]")
+            
+            # Get transcript
+            transcript_result = youtube.get_video_transcript(latest_video['video_id'])
+            
+            if transcript_result['success']:
+                # Create a panel for the transcript
+                # Combine all text segments into a single paragraph
+                transcript_text = ""
+                current_sentence = ""
+                
+                for segment in transcript_result['transcript']:
+                    text = segment['text'].strip()
+                    
+                    # Skip empty segments
+                    if not text:
+                        continue
+                        
+                    # Add space before the text if it doesn't start with punctuation
+                    if text[0] not in ',.!?:;' and current_sentence:
+                        current_sentence += ' '
+                    
+                    current_sentence += text
+                    
+                    # If the segment ends with sentence-ending punctuation,
+                    # add it to transcript_text and start a new sentence
+                    if text[-1] in '.!?':
+                        transcript_text += current_sentence + '\n\n'
+                        current_sentence = ""
+                
+                # Add any remaining text
+                if current_sentence:
+                    transcript_text += current_sentence
+                
+                console.print(Panel(
+                    transcript_text.strip(),
+                    title=f"PHỤ ĐỀ - {latest_video['title']}",
+                    border_style="blue"
+                ))
+            else:
+                console.print(f"[red]{transcript_result['error']}[/red]")
 
     # Display poster URL if available
     if movie_data["poster_path"]:
