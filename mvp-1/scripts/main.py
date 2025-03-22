@@ -108,12 +108,30 @@ def display_movie_info(movie):
         awards_vi = translate_to_vietnamese(omdb_details['awards'])
         console.print(Panel(awards_vi, title="GIẢI THƯỞNG", border_style="yellow"))
 
-    # Display summary
-    console.print(Panel(overview_vi, title="TÓM TẮT NỘI DUNG PHIM (The Movie Database)", border_style="green"))
-    if omdb_details['success'] and imdb_plot_vi:
-        console.print(Panel(imdb_plot_vi, title="TÓM TẮT NỘI DUNG PHIM (Internet Movie Database)", border_style="green"))
+    # Display summaries with both original and translated content
+    if movie_data["overview"]:
+        console.print(Panel(
+            f"{overview_vi}\n\n[dim]Original: {movie_data['overview']}[/dim]",
+            title="TÓM TẮT NỘI DUNG PHIM (The Movie Database)",
+            border_style="green"
+        ))
+
+    if omdb_details['success'] and omdb_details['plot']:
+        console.print(Panel(
+            f"{imdb_plot_vi}\n\n[dim]Original: {omdb_details['plot']}[/dim]",
+            title="TÓM TẮT NỘI DUNG PHIM (Internet Movie Database)",
+            border_style="green"
+        ))
+
     if wiki_plot_data['success']:
-        console.print(Panel(wiki_plot_vi, title="TÓM TẮT CỐT TRUYỆN (WIKIPEDIA)", border_style="green"))
+        if wiki_plot_data['language'] == 'en':
+            console.print(Panel(
+                f"{wiki_plot_vi}\n\n[dim]Original: {wiki_plot_data['plot']}[/dim]",
+                title="TÓM TẮT CỐT TRUYỆN (WIKIPEDIA)",
+                border_style="green"
+            ))
+        else:
+            console.print(Panel(wiki_plot_vi, title="TÓM TẮT CỐT TRUYỆN (WIKIPEDIA)", border_style="green"))
 
     # Display YouTube reviews using Rich Table
     console.print(f"\n{UI_ICONS['youtube']} VIDEOS TRÊN YOUTUBE:")

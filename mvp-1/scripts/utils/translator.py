@@ -18,7 +18,7 @@ from config import TARGET_LANGUAGE
 # Initialize translator with retry logic
 try:
     from googletrans import Translator
-    translator = Translator()
+    translator = Translator(service_urls=['translate.google.com'])
 except Exception as e:
     print(f"Error initializing translator: {e}")
     translator = None
@@ -48,7 +48,7 @@ def translate_to_vietnamese(text):
             if retry_count > 0:
                 time.sleep(1)
                 
-            translation = translator.translate(text, dest=TARGET_LANGUAGE)
+            translation = translator.translate(text, dest='vi')
             
             # Verify we have valid translated text
             if translation and hasattr(translation, 'text') and translation.text:

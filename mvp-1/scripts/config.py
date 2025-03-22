@@ -26,7 +26,7 @@ TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 
 # Language settings
 LANGUAGE = os.getenv("LANGUAGE", "en-US")
-TARGET_LANGUAGE = os.getenv("TARGET_LANGUAGE", "vi")  # Vietnamese
+TARGET_LANGUAGE = "vi"  # Vietnamese - Always translate to Vietnamese
 
 # UI symbols and formatting
 UI_SEPARATOR = "=" * 60
