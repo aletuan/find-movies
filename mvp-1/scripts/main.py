@@ -148,6 +148,49 @@ def display_movie_info(movie):
             video_title = f"[link={review['url']}] {review['title']} [/link]"
             youtube_table.add_row(str(i), video_title, review['channel'], published_date)
         console.print(youtube_table)
+        
+        # Ask user if they want to view a review's transcript
+        while True:
+            try:
+                transcript_choice = input("\nChọn số để xem phụ đề của video (hoặc 'b' để bỏ qua): ")
+                
+                if transcript_choice.lower() == 'b':
+                    break
+                    
+                idx = int(transcript_choice) - 1
+                if 0 <= idx < len(youtube_reviews):
+                    video = youtube_reviews[idx]
+                    console.print(f"\nĐang lấy phụ đề cho video: {video['title']}...")
+                    
+                    # Get transcript
+                    transcript_result = youtube.get_video_transcript(video['video_id'])
+                    
+                    if transcript_result['success']:
+                        # Create a panel for the transcript
+                        transcript_text = ""
+                        for segment in transcript_result['transcript']:
+                            # Format timestamp as minutes:seconds
+                            timestamp = int(segment['start'])
+                            minutes = timestamp // 60
+                            seconds = timestamp % 60
+                            time_str = f"{minutes:02d}:{seconds:02d}"
+                            
+                            transcript_text += f"[{time_str}] {segment['text']}\n"
+                        
+                        console.print(Panel(
+                            transcript_text,
+                            title=f"PHỤ ĐỀ - {video['title']}",
+                            border_style="blue"
+                        ))
+                    else:
+                        console.print(f"[red]{transcript_result['error']}[/red]")
+                    
+                    input("\nNhấn Enter để tiếp tục...")
+                    break
+                else:
+                    print("Lựa chọn không hợp lệ. Vui lòng thử lại.")
+            except ValueError:
+                print("Vui lòng nhập một số hợp lệ.")
 
     # Display poster URL if available
     if movie_data["poster_path"]:

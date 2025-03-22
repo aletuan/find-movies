@@ -10,6 +10,8 @@ import requests
 import urllib.parse
 import sys
 import os
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
 
 # Add parent directory to sys.path to import config and utils
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -92,4 +94,55 @@ def check_api_key():
         print("Bạn có thể đăng ký API key tại: https://console.cloud.google.com/apis/library/youtube.googleapis.com")
         print("Tiếp tục mà không có tìm kiếm YouTube nâng cao...\n")
         return False
-    return True 
+    return True
+
+def get_video_transcript(video_id):
+    """Get transcript (subtitles) from a YouTube video.
+    
+    Args:
+        video_id (str): YouTube video ID
+        
+    Returns:
+        dict: Dictionary containing success status and transcript data
+            - success (bool): Whether transcript was retrieved successfully
+            - transcript (list): List of transcript segments with text and timestamps
+            - error (str): Error message if any
+    """
+    try:
+        # Try to get Vietnamese transcript first
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        
+        try:
+            # Try to get Vietnamese transcript
+            transcript = transcript_list.find_transcript(['vi'])
+        except NoTranscriptFound:
+            try:
+                # If Vietnamese not available, get English and translate
+                transcript = transcript_list.find_transcript(['en'])
+                transcript = transcript.translate('vi')
+            except NoTranscriptFound:
+                # If no English transcript, get auto-generated and translate
+                transcript = transcript_list.find_generated_transcript(['en'])
+                transcript = transcript.translate('vi')
+        
+        # Get the actual transcript data
+        transcript_data = transcript.fetch()
+        
+        return {
+            "success": True,
+            "transcript": transcript_data,
+            "error": None
+        }
+        
+    except TranscriptsDisabled:
+        return {
+            "success": False,
+            "transcript": None,
+            "error": "Phụ đề đã bị tắt cho video này."
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "transcript": None,
+            "error": f"Không thể lấy phụ đề: {str(e)}"
+        } 
