@@ -53,13 +53,14 @@ def display_movie_info(movie_details):
     # Get and display AI analysis
     console.print(f"\n{UI_ICONS['review']} PHÂN TÍCH VÀ ĐÁNH GIÁ:")
     analysis_result = openai_helper.get_movie_analysis(movie_details)
-    
-    if analysis_result['success']:
-        console.print(Panel(analysis_result['analysis'], border_style="green"))
+    if isinstance(analysis_result, str) and not analysis_result.startswith("Error"):
+        # Wrap text at 90 characters and create a panel
+        wrapped_text = "\n".join([line.strip() for line in analysis_result.split("\n") if line.strip()])
+        console.print(Panel(wrapped_text, border_style="green", width=100))
     else:
-        console.print(f"[red]{analysis_result['error']}[/red]")
+        console.print(f"[red]{analysis_result}[/red]")
     
-    # Display poster URL if available
+    # Show poster if available
     if movie_details.get('Poster') and movie_details['Poster'] != 'N/A':
         console.print(f"\n{UI_ICONS['poster']} Poster: {movie_details['Poster']}")
     

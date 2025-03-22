@@ -17,73 +17,49 @@ from config import OPENAI_API_KEY
 # Set OpenAI API key
 openai.api_key = OPENAI_API_KEY
 
-def get_movie_analysis(movie_data):
+def get_movie_analysis(movie_details):
     """Get movie analysis and review using OpenAI.
     
     Args:
-        movie_data (dict): Movie details from OMDb API
+        movie_details (dict): Movie details from OMDb API
         
     Returns:
-        dict: Analysis results containing summary and review
+        str: Analysis results containing summary and review
     """
-    if not check_api_key():
-        return {
-            "success": False,
-            "error": "OpenAI API key not configured"
-        }
-    
+    if not OPENAI_API_KEY:
+        return "Error: OpenAI API key not found"
+
     try:
-        # Prepare movie information for the prompt
-        movie_info = f"""
-Tên phim: {movie_data.get('Title')}
-Năm: {movie_data.get('Year')}
-Đạo diễn: {movie_data.get('Director')}
-Diễn viên: {movie_data.get('Actors')}
-Thể loại: {movie_data.get('Genre')}
-Điểm IMDb: {movie_data.get('imdbRating')}
-Nội dung: {movie_data.get('Plot')}
-Giải thưởng: {movie_data.get('Awards')}
-"""
+        openai.api_key = OPENAI_API_KEY
+        
+        prompt = f"""Hãy viết một bài review ngắn gọn về bộ phim "{movie_details['Title']}" trong khoảng 5-10 câu.
+        Bài review nên bao gồm:
+        1. Một câu tóm tắt cốt truyện chính
+        2. Điểm mạnh và điểm yếu nổi bật của phim
+        3. Đánh giá tổng thể và đề xuất đối tượng khán giả phù hợp
+        
+        Thông tin tham khảo về phim:
+        - Đạo diễn: {movie_details.get('Director', 'Không có thông tin')}
+        - Diễn viên: {movie_details.get('Actors', 'Không có thông tin')}
+        - Thể loại: {movie_details.get('Genre', 'Không có thông tin')}
+        - Điểm IMDb: {movie_details.get('imdbRating', 'Không có thông tin')}
+        - Giải thưởng: {movie_details.get('Awards', 'Không có thông tin')}
+        
+        Hãy viết bằng tiếng Việt, với giọng điệu tự nhiên và dễ hiểu."""
 
-        # Create prompt for analysis
-        prompt = f"""Là một nhà phê bình phim chuyên nghiệp, hãy phân tích và đánh giá bộ phim sau bằng tiếng Việt:
-
-{movie_info}
-
-Yêu cầu:
-1. Tóm tắt nội dung chính của phim (2-3 đoạn)
-2. Phân tích các điểm mạnh và điểm yếu về:
-   - Kịch bản
-   - Diễn xuất
-   - Đạo diễn
-   - Hình ảnh và âm thanh
-3. Đánh giá tổng thể và đề xuất đối tượng khán giả phù hợp
-
-Hãy viết với giọng điệu chuyên nghiệp nhưng dễ hiểu, tránh spoiler quan trọng."""
-
-        # Get completion from OpenAI
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Bạn là một nhà phê bình phim chuyên nghiệp."},
+                {"role": "system", "content": "You are a professional movie critic who writes concise and insightful reviews in Vietnamese."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
             max_tokens=1000
         )
         
-        analysis = response.choices[0].message['content']
-        
-        return {
-            "success": True,
-            "analysis": analysis
-        }
-        
+        return response.choices[0].message['content'].strip()
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Error getting movie analysis: {str(e)}"
-        }
+        return f"Error getting movie analysis: {str(e)}"
 
 def check_api_key():
     """Check if the OpenAI API key is valid.
