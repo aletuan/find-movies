@@ -66,6 +66,20 @@ def display_movie_info(movie_details):
     
     console.print("\n" + UI_SEPARATOR)
 
+def sort_movies_by_year(movies):
+    """Sort movies by year in descending order (newest first)."""
+    def extract_year(movie):
+        try:
+            year_str = movie.get('Year', '0')
+            # Handle TV series with year ranges (e.g., "2020–2023")
+            if '–' in year_str:
+                year_str = year_str.split('–')[0]
+            return int(year_str) if year_str.isdigit() else 0
+        except (ValueError, TypeError):
+            return 0
+    
+    return sorted(movies, key=extract_year, reverse=True)
+
 def main():
     """Main function to run the movie search script."""
     print("\n=== TÌM KIẾM VÀ PHÂN TÍCH PHIM ===\n")
@@ -77,13 +91,13 @@ def main():
     
     while True:
         # Get movie title from user
-        query = input("\nNhập tên phim (hoặc 'q' để thoát): ")
+        query = input("\nNhập tên phim (hoặc 'q' để thoát): ").strip()
         
         if query.lower() in ['q', 'quit', 'exit']:
             print("\nCảm ơn bạn đã sử dụng chương trình. Tạm biệt!")
             break
         
-        if not query.strip():
+        if not query:
             print("Vui lòng nhập tên phim.")
             continue
         
@@ -92,19 +106,35 @@ def main():
         # Search for movies
         movies = omdb.search_movies(query)
         
+        # Sort movies by year (newest first)
+        movies = sort_movies_by_year(movies)
+        
         # Display search results
         if movies:
             table = Table(title="KẾT QUẢ TÌM KIẾM")
-            table.add_column("#", justify="right", style="cyan")
+            table.add_column("#", justify="right", style="cyan", no_wrap=True)
             table.add_column("Tên phim", style="magenta")
-            table.add_column("Năm", style="green")
-            table.add_column("IMDb ID", style="blue")
+            table.add_column("Năm", style="green", justify="center")
+            table.add_column("IMDb Rating", style="yellow", justify="center")
+            table.add_column("Số đánh giá", style="blue", justify="right")
+            table.add_column("IMDb ID", style="dim")
             
+            console.print("\nĐang lấy thông tin chi tiết cho các phim...")
             for i, movie in enumerate(movies[:10], 1):
+                # Get detailed info for each movie to get rating and votes
+                movie_details = omdb.get_movie_details(movie.get('imdbID'))
+                
+                # Format the votes number with commas
+                votes = movie_details.get('imdbVotes', 'N/A')
+                if votes != 'N/A':
+                    votes = "{:,}".format(int(votes.replace(',', '')))
+                
                 table.add_row(
                     str(i),
                     movie.get('Title', 'N/A'),
                     movie.get('Year', 'N/A'),
+                    movie_details.get('imdbRating', 'N/A'),
+                    votes,
                     movie.get('imdbID', 'N/A')
                 )
             console.print(table)
