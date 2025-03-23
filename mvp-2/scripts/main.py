@@ -48,7 +48,40 @@ def display_movie_info(movie_details):
     
     # Display awards if available
     if movie_details.get('Awards') and movie_details['Awards'] != 'N/A':
-        console.print(Panel(movie_details['Awards'], title=f"{UI_ICONS['award']} GIẢI THƯỞNG", border_style="yellow"))
+        awards_text = movie_details['Awards']
+        formatted_awards = []
+        
+        # Extract Oscar nominations/wins
+        if 'Oscar' in awards_text:
+            oscar_part = awards_text.split('.')[0]
+            formatted_awards.append(f"🏆 Oscar: {oscar_part}")
+        
+        # Extract total wins and nominations
+        wins_noms = awards_text.split('.')[-1].strip()
+        if wins_noms:
+            wins_count = 0
+            noms_count = 0
+            
+            # Extract wins
+            if 'wins' in wins_noms:
+                wins_part = wins_noms.split('&')[0].strip()
+                try:
+                    wins_count = int(''.join(filter(str.isdigit, wins_part)))
+                    formatted_awards.append(f"🌟 Giải thưởng đã thắng: {wins_count}")
+                except ValueError:
+                    pass
+            
+            # Extract nominations
+            if 'nominations' in wins_noms:
+                noms_part = wins_noms.split('&')[1].strip() if '&' in wins_noms else wins_noms
+                try:
+                    noms_count = int(''.join(filter(str.isdigit, noms_part)))
+                    formatted_awards.append(f"🎯 Đề cử: {noms_count}")
+                except ValueError:
+                    pass
+        
+        awards_panel = "\n".join(formatted_awards) if formatted_awards else awards_text
+        console.print(Panel(awards_panel, title=f"{UI_ICONS['award']} GIẢI THƯỞNG", border_style="yellow"))
     
     # Get and display AI analysis
     console.print(f"\n{UI_ICONS['review']} PHÂN TÍCH VÀ ĐÁNH GIÁ:")
