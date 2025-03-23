@@ -48,7 +48,40 @@ def display_movie_info(movie_details):
     
     # Display awards if available
     if movie_details.get('Awards') and movie_details['Awards'] != 'N/A':
-        console.print(Panel(movie_details['Awards'], title=f"{UI_ICONS['award']} GIẢI THƯỞNG", border_style="yellow"))
+        awards_text = movie_details['Awards']
+        formatted_awards = []
+        
+        # Extract Oscar nominations/wins
+        if 'Oscar' in awards_text:
+            oscar_part = awards_text.split('.')[0]
+            formatted_awards.append(f"🏆 Oscar: {oscar_part}")
+        
+        # Extract total wins and nominations
+        wins_noms = awards_text.split('.')[-1].strip()
+        if wins_noms:
+            wins_count = 0
+            noms_count = 0
+            
+            # Extract wins
+            if 'wins' in wins_noms:
+                wins_part = wins_noms.split('&')[0].strip()
+                try:
+                    wins_count = int(''.join(filter(str.isdigit, wins_part)))
+                    formatted_awards.append(f"🌟 Giải thưởng đã thắng: {wins_count}")
+                except ValueError:
+                    pass
+            
+            # Extract nominations
+            if 'nominations' in wins_noms:
+                noms_part = wins_noms.split('&')[1].strip() if '&' in wins_noms else wins_noms
+                try:
+                    noms_count = int(''.join(filter(str.isdigit, noms_part)))
+                    formatted_awards.append(f"🎯 Đề cử: {noms_count}")
+                except ValueError:
+                    pass
+        
+        awards_panel = "\n".join(formatted_awards) if formatted_awards else awards_text
+        console.print(Panel(awards_panel, title=f"{UI_ICONS['award']} GIẢI THƯỞNG", border_style="yellow"))
     
     # Get and display AI analysis
     console.print(f"\n{UI_ICONS['review']} PHÂN TÍCH VÀ ĐÁNH GIÁ:")
@@ -117,6 +150,8 @@ def main():
             table.add_column("Năm", style="green", justify="center")
             table.add_column("IMDb Rating", style="yellow", justify="center")
             table.add_column("Số đánh giá", style="blue", justify="right")
+            table.add_column("Box Office", style="green", justify="right")
+            table.add_column("Giải thưởng", style="yellow")
             table.add_column("IMDb ID", style="dim")
             
             console.print("\nĐang lấy thông tin chi tiết cho các phim...")
@@ -129,12 +164,31 @@ def main():
                 if votes != 'N/A':
                     votes = "{:,}".format(int(votes.replace(',', '')))
                 
+                # Format box office value
+                box_office = movie_details.get('BoxOffice', 'N/A')
+                if box_office != 'N/A':
+                    # Remove '$' and ',' then format with commas
+                    try:
+                        box_office_value = int(box_office.replace('$', '').replace(',', ''))
+                        box_office = f"${box_office_value:,}"
+                    except ValueError:
+                        box_office = 'N/A'
+                
+                # Format awards information
+                awards = movie_details.get('Awards', 'N/A')
+                if awards != 'N/A':
+                    # Shorten awards text if too long
+                    if len(awards) > 30:
+                        awards = awards[:27] + "..."
+                
                 table.add_row(
                     str(i),
                     movie.get('Title', 'N/A'),
                     movie.get('Year', 'N/A'),
                     movie_details.get('imdbRating', 'N/A'),
                     votes,
+                    box_office,
+                    awards,
                     movie.get('imdbID', 'N/A')
                 )
             console.print(table)
