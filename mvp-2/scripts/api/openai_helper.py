@@ -8,14 +8,14 @@ Handles API calls to OpenAI for movie analysis and reviews.
 
 import sys
 import os
-import openai
+from openai import OpenAI
 
 # Add parent directory to sys.path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import OPENAI_API_KEY
 
-# Set OpenAI API key
-openai.api_key = OPENAI_API_KEY
+# Initialize OpenAI client
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 def get_movie_analysis(movie_details):
     """Get movie analysis and review using OpenAI.
@@ -30,8 +30,6 @@ def get_movie_analysis(movie_details):
         return "Error: OpenAI API key not found"
 
     try:
-        openai.api_key = OPENAI_API_KEY
-        
         prompt = f"""Hãy viết một bài phân tích chuyên sâu về bộ phim "{movie_details['Title']}" với độ dài khoảng 10-15 câu.
 
         Bài phân tích cần đảm bảo các nội dung sau một cách tự nhiên và liền mạch:
@@ -50,7 +48,7 @@ def get_movie_analysis(movie_details):
         
         Hãy viết với giọng điệu chuyên nghiệp, khách quan nhưng dễ hiểu, tránh chia thành các mục riêng biệt. Các ý cần được kết nối tự nhiên, tạo một bài phân tích mạch lạc và có chiều sâu."""
 
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a professional film critic who writes flowing, insightful, and cohesive reviews in Vietnamese. Your reviews seamlessly blend analysis of different aspects while maintaining clarity and depth."},
@@ -60,9 +58,71 @@ def get_movie_analysis(movie_details):
             max_tokens=1000
         )
         
-        return response.choices[0].message['content'].strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Error getting movie analysis: {str(e)}"
+
+def get_awards_analysis(movie_details):
+    """Get detailed analysis of movie awards using OpenAI.
+    
+    Args:
+        movie_details (dict): Movie details from OMDb API
+        
+    Returns:
+        dict: Structured awards analysis
+    """
+    if not OPENAI_API_KEY:
+        return {"error": "OpenAI API key not found"}
+
+    try:
+        prompt = f"""Phân tích chi tiết các giải thưởng của bộ phim sau và trả về kết quả có cấu trúc:
+
+Thông tin giải thưởng: {movie_details.get('Awards', 'Không có thông tin')}
+
+Hãy phân tích và trả về kết quả theo định dạng JSON với cấu trúc sau:
+{{
+    "oscar_awards": [
+        {{
+            "category": "Tên hạng mục",
+            "result": "Thắng/Đề cử",
+            "year": "Năm"
+        }}
+    ],
+    "golden_globe_awards": [...],
+    "bafta_awards": [...],
+    "other_major_awards": [
+        {{
+            "award_name": "Tên giải thưởng",
+            "category": "Hạng mục",
+            "result": "Thắng/Đề cử",
+            "year": "Năm"
+        }}
+    ],
+    "total_wins": số_giải_thắng,
+    "total_nominations": số_đề_cử,
+    "summary": "Tóm tắt ngắn gọn về thành tựu giải thưởng nổi bật nhất"
+}}
+
+Chỉ trả về JSON, không kèm theo bất kỳ văn bản nào khác."""
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a movie awards analyst who provides structured analysis of film awards in Vietnamese."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=1000
+        )
+        
+        try:
+            import json
+            return json.loads(response.choices[0].message.content.strip())
+        except json.JSONDecodeError:
+            return {"error": "Could not parse awards analysis"}
+            
+    except Exception as e:
+        return {"error": f"Error analyzing awards: {str(e)}"}
 
 def check_api_key():
     """Check if the OpenAI API key is valid.
