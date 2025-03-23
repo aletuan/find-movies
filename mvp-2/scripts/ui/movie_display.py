@@ -3,6 +3,7 @@ from rich.panel import Panel
 from rich.table import Table
 from api import openai_helper
 from config import UI_ICONS, UI_SEPARATOR
+from utils.awards_parser import parse_awards
 
 console = Console()
 
@@ -35,10 +36,71 @@ def display_movie_info(movie_details):
         console.print(table)
     
     # Display awards if available
-    from utils.awards_parser import parse_awards
     if movie_details.get('Awards') and movie_details['Awards'] != 'N/A':
-        awards_panel = parse_awards(movie_details['Awards'])
-        console.print(Panel(awards_panel, title=f"{UI_ICONS['award']} GIẢI THƯỞNG", border_style="yellow"))
+        awards_analysis = openai_helper.get_awards_analysis(movie_details)
+        
+        if not awards_analysis.get('error'):
+            # Create awards table
+            awards_table = Table(title=f"{UI_ICONS['award']} GIẢI THƯỞNG")
+            awards_table.add_column("Giải thưởng", style="yellow")
+            awards_table.add_column("Hạng mục", style="cyan")
+            awards_table.add_column("Kết quả", style="green")
+            awards_table.add_column("Năm", style="blue")
+            
+            # Add Oscar awards
+            for award in awards_analysis.get('oscar_awards', []):
+                awards_table.add_row(
+                    "Oscar",
+                    award['category'],
+                    award['result'],
+                    award['year']
+                )
+            
+            # Add Golden Globe awards
+            for award in awards_analysis.get('golden_globe_awards', []):
+                awards_table.add_row(
+                    "Quả Cầu Vàng",
+                    award['category'],
+                    award['result'],
+                    award['year']
+                )
+            
+            # Add BAFTA awards
+            for award in awards_analysis.get('bafta_awards', []):
+                awards_table.add_row(
+                    "BAFTA",
+                    award['category'],
+                    award['result'],
+                    award['year']
+                )
+            
+            # Add other major awards
+            for award in awards_analysis.get('other_major_awards', []):
+                awards_table.add_row(
+                    award['award_name'],
+                    award['category'],
+                    award['result'],
+                    award['year']
+                )
+            
+            # Display awards table
+            console.print(awards_table)
+            
+            # Display awards summary
+            if awards_analysis.get('summary'):
+                console.print(Panel(
+                    awards_analysis['summary'],
+                    title="TÓM TẮT THÀNH TỰU",
+                    border_style="yellow"
+                ))
+            
+            # Display total counts
+            total_info = f"Tổng cộng: {awards_analysis.get('total_wins', 0)} giải thắng, {awards_analysis.get('total_nominations', 0)} đề cử"
+            console.print(f"[yellow]{total_info}[/yellow]\n")
+        else:
+            # Fallback to simple awards display if analysis fails
+            awards_panel = parse_awards(movie_details['Awards'])
+            console.print(Panel(awards_panel, title=f"{UI_ICONS['award']} GIẢI THƯỞNG", border_style="yellow"))
     
     # Get and display AI analysis
     console.print(f"\n{UI_ICONS['review']} PHÂN TÍCH VÀ ĐÁNH GIÁ:")
