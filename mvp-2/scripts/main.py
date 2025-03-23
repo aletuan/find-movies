@@ -117,6 +117,8 @@ def main():
             table.add_column("Năm", style="green", justify="center")
             table.add_column("IMDb Rating", style="yellow", justify="center")
             table.add_column("Số đánh giá", style="blue", justify="right")
+            table.add_column("Box Office", style="green", justify="right")
+            table.add_column("Giải thưởng", style="yellow")
             table.add_column("IMDb ID", style="dim")
             
             console.print("\nĐang lấy thông tin chi tiết cho các phim...")
@@ -129,12 +131,31 @@ def main():
                 if votes != 'N/A':
                     votes = "{:,}".format(int(votes.replace(',', '')))
                 
+                # Format box office value
+                box_office = movie_details.get('BoxOffice', 'N/A')
+                if box_office != 'N/A':
+                    # Remove '$' and ',' then format with commas
+                    try:
+                        box_office_value = int(box_office.replace('$', '').replace(',', ''))
+                        box_office = f"${box_office_value:,}"
+                    except ValueError:
+                        box_office = 'N/A'
+                
+                # Format awards information
+                awards = movie_details.get('Awards', 'N/A')
+                if awards != 'N/A':
+                    # Shorten awards text if too long
+                    if len(awards) > 30:
+                        awards = awards[:27] + "..."
+                
                 table.add_row(
                     str(i),
                     movie.get('Title', 'N/A'),
                     movie.get('Year', 'N/A'),
                     movie_details.get('imdbRating', 'N/A'),
                     votes,
+                    box_office,
+                    awards,
                     movie.get('imdbID', 'N/A')
                 )
             console.print(table)
