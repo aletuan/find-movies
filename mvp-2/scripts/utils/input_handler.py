@@ -6,6 +6,10 @@ Input handler module for the Movie Search Script.
 Handles user input validation and processing.
 """
 
+from rich.console import Console
+
+console = Console()
+
 def get_movie_title():
     """Get and validate movie title input.
     
@@ -19,15 +23,15 @@ def get_movie_title():
             return None
             
         if not title:
-            print("[red]Vui lòng nhập tên phim.[/red]")
+            console.print("[red]Vui lòng nhập tên phim.[/red]")
             continue
             
         if len(title) < 2:
-            print("[red]Tên phim phải có ít nhất 2 ký tự.[/red]")
+            console.print("[red]Tên phim phải có ít nhất 2 ký tự.[/red]")
             continue
             
         if title.isdigit():
-            print("[red]Tên phim không thể chỉ chứa số.[/red]")
+            console.print("[red]Tên phim không thể chỉ chứa số.[/red]")
             continue
             
         return title
@@ -52,6 +56,6 @@ def get_movie_selection(max_movies):
             if 1 <= num <= max_movies:
                 return num - 1  # Convert to 0-based index
             else:
-                print(f"Vui lòng chọn số từ 1 đến {max_movies}.")
+                console.print(f"[red]Vui lòng chọn số từ 1 đến {max_movies}.[/red]")
         except ValueError:
-            print("Vui lòng nhập một số hợp lệ hoặc 'b' để quay lại.") 
+            console.print("[red]Vui lòng nhập một số hợp lệ hoặc 'b' để quay lại.[/red]") 
